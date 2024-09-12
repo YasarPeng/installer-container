@@ -1,10 +1,10 @@
 # x86_64
 
-https://github.com/containerd/nerdctl/releases/download/
+https://github.com/containerd/nerdctl/releases/
 
 # aarch64
 
-https://github.com/containerd/nerdctl/releases/download/
+https://github.com/containerd/nerdctl/releases/
 
 # Used to install containerd
 

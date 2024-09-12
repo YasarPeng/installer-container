@@ -6,8 +6,9 @@ set -e
 parent_path="$(cd "$(dirname "$0")" && pwd)"
 grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
 
-docker_package="docker-20.10.24.tgz"
-docker_rootdir="${1:-/data/laiye}/Docker"
+docker_version="20.10.24"
+docker_package="docker-${docker_version}.tgz"
+docker_rootdir="${1:-/var/lib/docker}"
 
 source $grandparent_path/tools/common.sh
 
@@ -26,7 +27,7 @@ which podman &> /dev/null && error "Podman is installed, uninstall it first.
 " && exit -1
 
 # Check docker
-which dockerd &> /dev/null && error "Podman is installed, uninstall it first.
+which dockerd &> /dev/null && error "Dockerd is installed, uninstall it first.
     If you are using the 'yum' package manager, Use: yum remove -y docker
     If you are using the 'apt' package manager, Use: apt remove -y docker
 " && exit -1

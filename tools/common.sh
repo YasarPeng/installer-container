@@ -1,6 +1,4 @@
 #!/bin/bash
-#docker version: 19.06.0+
-#docker-compose version: 1.18.0+
 
 set +e
 set -o noglob

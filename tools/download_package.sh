@@ -8,35 +8,83 @@ grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
 
 source $parent_path/common.sh
 
-# Get cpu arch
-if [ -z "$1" ]; then
-    arch="x86_64"
-    elif [ "$1" == "aarch64" ]; then
-    arch="aarch64"
-else
-    error "未指定CPU类型"
-    exit -1
-fi
-
-public_url="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}"
-
-read -p "请输入你想要安装的容器运行时(dockerd|containerd): " choice
-
-case "$choice" in
-    [dD][oO][cC][kK][eE][rR][dD]|[dD])
-        # docker
-        docker="docker-20.10.24.tgz"
-        docker_compose="docker-compose"
-        wget -c ${public_url}/${docker} -P ${grandparent_path}/docker/${arch}/
-        wget -c ${public_url}/${docker_compose} -P ${grandparent_path}/docker/${arch}/
+# Check architecture
+arch="$(uname -m)"
+case $arch in
+    x86_64)
+        ARCH="amd64"
     ;;
-    [cC][oO][nN][tT][aA][iI][nN][eE][rR][dD]|[cC])
-        nerdctl_full="nerdctl-full-1.7.6.tar.gz"
-        wget -c ${public_url}/${nerdctl_full} -P ${grandparent_path}/containerd/${arch}/
+    aarch64)
+        ARCH="arm64"
     ;;
     *)
-        warn "无效输入,请输入'docker' 或 'containerd'"
+        error "The current hardware platform or virtual platform is not supported."
+        exit 1
     ;;
 esac
 
+# public_url="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}"
 
+choice_runtime() {
+    underline "请选择您想要安装的容器运行时: "
+    PS3=$'\033[32m输入选项编号: \033[0m'
+    
+    select runtime in "${!runtimes[@]}" "退出"
+    do
+        if [[ "$runtime" == "退出" ]]; then
+            exit 0
+            elif [[ -n "$runtime" ]]; then
+            select version in "${runtimes[$runtime]}" "返回上一步"
+            do
+                if [[ "$version" == "返回上一步" ]]; then
+                    choice_runtime
+                elif [[ -n "$version" ]]; then
+                    # download "https://download.docker.com/linux/static/stable/${arch}/docker-${version}.tgz" "${grandparent_path}/docker/${arch}/"
+                    # download "https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/docker-compose" "${grandparent_path}/docker/${arch}/"
+                    downloader "$runtime" "${runtimes[$runtime]}"
+                    break
+                else
+                    error "无效的编号选项, 请重新选择"
+                fi
+            done
+            break
+        else
+            error "无效的编号选项, 请重新选择"
+        fi
+    done
+}
+
+
+downloader() {
+    local service=$1
+    local version=$2
+    # local arch=${3:-$ARCH}
+    
+    case "$service" in
+        "docker")
+            #url="https://download.docker.com/linux/static/stable/${arch}/docker-${version}.tgz"
+            #url_compose="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}"
+            url="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/docker-${version}.tgz"
+            url_compose="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/docker-compose"
+            wget -c ${url} -P ${grandparent_path}/docker/${arch}/
+            wget -c ${url_compose} -P ${grandparent_path}/docker/${arch}/
+            success "下载完成，存储路径：${grandparent_path}/docker/${arch}/"
+        ;;
+        "containerd")
+            #url="https://github.com/containerd/nerdctl/releases/download/v1.7.6/nerdctl-full-${version}-linux-${ARCH}.tar.gz"
+            url="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/nerdctl-full-${version}-linux-${ARCH}.tar.gz"
+            wget -c ${url} -P ${grandparent_path}/containerd/${arch}/
+            success "下载完成，存储路径：${grandparent_path}/containerd/${arch}/"
+        ;;
+    esac
+}
+
+
+# 定义一个关联数组，容器运行时选项
+declare -A runtimes
+runtimes=(
+    ["docker"]="20.10.24"
+    ["containerd"]="1.7.6"
+)
+
+choice_runtime
