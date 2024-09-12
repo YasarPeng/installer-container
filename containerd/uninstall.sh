@@ -5,8 +5,9 @@ set -e
 # Get directory path
 parent_path="$(cd "$(dirname "$0")" && pwd)"
 grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
-containerd_package="nerdctl-full-1.7.6.tar.gz"
 containerd_rootdir="${1:-/data/laiye/containerd}"
+containerd_version="1.7.6"
+containerd_package="nerdctl-full-${containerd_version}-linux-${ARCH}.tar.gz"
 
 source $grandparent_path/tools/common.sh
 
