@@ -5,7 +5,7 @@ set -e
 # Get directory path
 parent_path="$(cd "$(dirname "$0")" && pwd)"
 grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
-docker_rootdir="${1:-/data/laiye}/Docker"
+docker_rootdir="${1:-/var/lib/docker}"
 
 source $grandparent_path/tools/common.sh
 
@@ -34,7 +34,7 @@ files=(
     "/usr/bin/ctr"
     "/usr/bin/runc"
     "/usr/bin/containerd"
-    "/usr/bin/containerd-shim" 
+    "/usr/bin/containerd-shim"
 )
 
 # 停止 Docker 和 containerd 服务
