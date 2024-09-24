@@ -10,6 +10,11 @@ docker_version="20.10.24"
 docker_package="docker-${docker_version}.tgz"
 docker_rootdir="${1:-/var/lib/docker}"
 
+if [[ "${docker_rootdir}" != /* ]]; then
+    error "${docker_rootdir} is not an absolute path."
+    exit 1
+fi
+
 source $grandparent_path/tools/common.sh
 
 
