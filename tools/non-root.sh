@@ -11,7 +11,7 @@ chmod +s /usr/local/bin/nerdctl
 chmod 755 /usr/bin/docker
 chmod 755 /usr/bin/docker-compose
 
-usermod -aG docker username
+usermod -aG laiye,docker laiye
 
 # # kubectl
 # HOME_DIR=`cat /etc/passwd | grep $1 | awk -F: '{print $6}'`
