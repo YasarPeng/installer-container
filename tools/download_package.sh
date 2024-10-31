@@ -38,7 +38,7 @@ choice_runtime() {
             do
                 if [[ "$version" == "返回上一步" ]]; then
                     choice_runtime
-                elif [[ -n "$version" ]]; then
+                    elif [[ -n "$version" ]]; then
                     # download "https://download.docker.com/linux/static/stable/${arch}/docker-${version}.tgz" "${grandparent_path}/docker/${arch}/"
                     # download "https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/docker-compose" "${grandparent_path}/docker/${arch}/"
                     downloader "$runtime" "${runtimes[$runtime]}"
@@ -79,10 +79,8 @@ downloader() {
     esac
 }
 
-
 # 定义一个关联数组，容器运行时选项
-declare -A runtimes
-runtimes=(
+declare -A runtimes=(
     ["docker"]="20.10.24"
     ["containerd"]="1.7.6"
 )

@@ -89,8 +89,7 @@ choice_rootdir() {
 }
 
 # 定义一个关联数组，容器运行时选项
-declare -A runtimes
-runtimes=(
+declare -A runtimes=(
     ["dockerd"]="/data/laiye/dockerd"
     ["containerd"]="/data/laiye/containerd"
 )
