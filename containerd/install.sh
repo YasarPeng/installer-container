@@ -2,6 +2,12 @@
 
 set -e
 
+# Get directory path
+parent_path="$(cd "$(dirname "$0")" && pwd)"
+grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
+
+source $grandparent_path/tools/common.sh
+
 # Check architecture
 arch="$(uname -m)"
 case $arch in
@@ -17,9 +23,6 @@ case $arch in
     ;;
 esac
 
-# Get directory path
-parent_path="$(cd "$(dirname "$0")" && pwd)"
-grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
 containerd_rootdir="${1:-/data/laiye/containerd}"
 containerd_version="1.7.6"
 containerd_package="nerdctl-full-${containerd_version}-linux-${ARCH}.tar.gz"
