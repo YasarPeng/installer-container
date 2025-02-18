@@ -5,6 +5,7 @@ set -e
 # 获取目录路径
 parent_path="$(cd "$(dirname "$0")" && pwd)"
 grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
+
 source $grandparent_path/tools/common.sh
 
 # 设置默认参数
