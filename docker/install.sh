@@ -76,7 +76,7 @@ install_docker() {
         tar --strip-components=1 -xvzf "${parent_path}/${arch}/${docker_package}" -C /usr/bin
     else
         note "从Docker官方下载安装包"
-        curl -fsSL "https://download.docker.com/linux/static/stable/${arch}/docker-${docker_version}.tgz" -o "${parent_path}/${arch}/docker-${docker_version}.tgz"
+        wget -c "https://download.docker.com/linux/static/stable/${arch}/docker-${docker_version}.tgz" -O "${parent_path}/${arch}/docker-${docker_version}.tgz"
         tar --strip-components=1 -xvzf "${parent_path}/${arch}/docker-${docker_version}.tgz" -C /usr/bin
     fi
     chmod -R u+x,g+x /usr/bin
@@ -105,7 +105,8 @@ if ! command_exists docker-compose; then
         chmod a+x /usr/bin/docker-compose
     else
         echo "本地未找到 docker-compose，尝试从网络下载..."
-        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/bin/docker-compose
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o "${parent_path}/${arch}/docker-compose"
+        cp "${parent_path}/${arch}/docker-compose" "/usr/bin/docker-compose"
         chmod a+x /usr/bin/docker-compose
     fi
 else

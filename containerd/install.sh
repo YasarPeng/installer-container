@@ -46,7 +46,7 @@ if [[ ! -f "${parent_path}/${ARCH}/${containerd_package}" ]]; then
     note "本地未找到 ${containerd_package}，正在从网络下载..."
     
     if command -v wget &>/dev/null; then
-        wget -O "${parent_path}/${ARCH}/${containerd_package}" "${containerd_url}"
+        wget -c -O "${parent_path}/${ARCH}/${containerd_package}" "${containerd_url}"
         elif command -v curl &>/dev/null; then
         curl -L -o "${parent_path}/${ARCH}/${containerd_package}" "${containerd_url}"
     else
