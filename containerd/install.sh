@@ -10,9 +10,11 @@ source "$grandparent_path/tools/common.sh"
 # 检查系统架构
 arch="$(uname -m)"
 case $arch in
-    x86_64|aarch64)
-        ARCH="${arch/x86_64/amd64}"
-        ARCH="${ARCH/aarch64/arm64}"
+    x86_64)
+        ARCH="amd64"
+    ;;
+    aarch64)
+        ARCH="arm64"
     ;;
     *)
         error "The current hardware platform or virtual platform is not supported."
@@ -41,25 +43,25 @@ if which dockerd &> /dev/null || which podman &> /dev/null; then
 fi
 
 # 下载 nerdctl 包（如果本地不存在）
-if [[ ! -f "${parent_path}/${ARCH}/${containerd_package}" ]]; then
-    mkdir -p "${parent_path}/${ARCH}"
+if [[ ! -f "${parent_path}/${arch}/${containerd_package}" ]]; then
+    mkdir -p "${parent_path}/${arch}"
     note "本地未找到 ${containerd_package}，正在从网络下载..."
     
     if command -v wget &>/dev/null; then
-        wget -c -O "${parent_path}/${ARCH}/${containerd_package}" "${containerd_url}"
+        wget -c -O "${parent_path}/${arch}/${containerd_package}" "${containerd_url}"
         elif command -v curl &>/dev/null; then
-        curl -L -o "${parent_path}/${ARCH}/${containerd_package}" "${containerd_url}"
+        curl -L -o "${parent_path}/${arch}/${containerd_package}" "${containerd_url}"
     else
-        error "未找到 wget 或 curl，无法下载 nerdctl。请手动下载到 ${parent_path}/${ARCH}/"
+        error "未找到 wget 或 curl，无法下载 nerdctl。请手动下载到 ${parent_path}/${arch}/"
         exit 1
     fi
     
-    note "下载完成：${parent_path}/${ARCH}/${containerd_package}"
+    note "下载完成：${parent_path}/${arch}/${containerd_package}"
 fi
 
 # 安装 containerd
 note "正在安装 containerd..."
-tar -C /usr/local -xvzf "${parent_path}/${ARCH}/${containerd_package}"
+tar -C /usr/local -xvzf "${parent_path}/${arch}/${containerd_package}"
 
 # 配置 containerd
 mkdir -p /etc/containerd
