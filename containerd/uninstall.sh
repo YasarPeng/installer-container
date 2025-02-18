@@ -24,7 +24,7 @@ case $arch in
 esac
 
 containerd_rootdir="${1:-/data/laiye/containerd}"
-containerd_version="1.7.6"
+containerd_version="${2:-1.7.6}"
 containerd_package="nerdctl-full-${containerd_version}-linux-${ARCH}.tar.gz"
 
 # 停止 containerd 和 buildkit 服务
