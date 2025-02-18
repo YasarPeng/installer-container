@@ -4,7 +4,7 @@
 
 # nerdctl
 chown root:$1 /usr/local/bin/nerdctl
-chmod 754 /usr/local/bin/nerdctl
+chmod 755 /usr/local/bin/nerdctl
 chmod +s /usr/local/bin/nerdctl
 
 # docker

@@ -2,48 +2,54 @@
 
 set -e
 
-# Get directory path
+# 获取目录路径
 parent_path="$(cd "$(dirname "$0")" && pwd)"
 grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
+source $grandparent_path/tools/common.sh
 
-docker_version="20.10.24"
+# 设置默认参数
+docker_version="${2:-20.10.24}"
 docker_package="docker-${docker_version}.tgz"
 docker_rootdir="${1:-/var/lib/docker}"
 
+# 检查路径是否为绝对路径
 if [[ "${docker_rootdir}" != /* ]]; then
     error "${docker_rootdir} is not an absolute path."
     exit 1
 fi
 
-source $grandparent_path/tools/common.sh
+# 检查系统架构
+arch="$(uname -m)"
+case $arch in
+    x86_64|aarch64)
+    ;;
+    *)
+        error "The current hardware platform or virtual platform is not supported."
+        exit 1
+    ;;
+esac
 
-
-# Get cpu arch
-arch=`/usr/bin/uname -m`
-if [[ $arch != "x86_64" && $arch != "aarch64" ]]; then
-    error "The current hardware platform or virtual platform is not supported."
-    exit -1
+# 检查容器运行时冲突
+if which podman &> /dev/null; then
+    error "Podman is installed, please uninstall it first:
+    - For yum: yum remove -y podman
+    - For apt: apt remove -y podman"
+    exit 1
 fi
 
-# Check podman
-which podman &> /dev/null && error "Podman is installed, uninstall it first.
-    If you are using the 'yum' package manager, Use: yum remove -y podman
-    If you are using the 'apt' package manager, Use: apt remove -y podman
-" && exit -1
+if which dockerd &> /dev/null; then
+    error "Dockerd is installed, please uninstall it first:
+    - For yum: yum remove -y docker
+    - For apt: apt remove -y docker"
+    exit 1
+fi
 
-# Check docker
-which dockerd &> /dev/null && error "Dockerd is installed, uninstall it first.
-    If you are using the 'yum' package manager, Use: yum remove -y docker
-    If you are using the 'apt' package manager, Use: apt remove -y docker
-" && exit -1
-
-# Get a Linux distribution
+# 获取Linux发行版
 get_distribution() {
-    lsb_dist=""
     if [ -r /etc/os-release ]; then
         lsb_dist="$(. /etc/os-release && echo "$ID")"
+        echo "${lsb_dist,,}"  # 转换为小写
     fi
-    note "$lsb_dist"
 }
 
 command_exists() {
@@ -52,42 +58,56 @@ command_exists() {
 
 # 安装Docker
 install_docker() {
-    lsb_dist=$(get_distribution)
-    lsb_dist="$(echo "$lsb_dist" | tr '[:upper:]' '[:lower:]')"
+    local lsb_dist=$(get_distribution)
     note "Current system is $lsb_dist"
     
-    # 创建docker组（如果不存在）
-    egrep "^docker" /etc/group >& /dev/null || groupadd docker
+    # 创建docker组
+    getent group docker > /dev/null || groupadd docker
     
-    # 拷贝相关文件
-    cp "${parent_path}/docker.service" "/usr/lib/systemd/system/docker.service"
-    cp "${parent_path}/containerd.service" "/usr/lib/systemd/system/containerd.service"
-    cp "${parent_path}/docker.socket" "/usr/lib/systemd/system/docker.socket"
+    # 拷贝systemd服务文件
+    local systemd_dir="/usr/lib/systemd/system"
+    cp "${parent_path}/docker.service" "${systemd_dir}/docker.service"
+    cp "${parent_path}/containerd.service" "${systemd_dir}/containerd.service"
+    cp "${parent_path}/docker.socket" "${systemd_dir}/docker.socket"
     
-    # 解压安装docker二进制文件
-    tar --strip-components=1 -xvzf ${parent_path}/${arch}/${docker_package} -C /usr/bin
+    # 安装docker二进制文件
+    if [ -f "${parent_path}/${arch}/${docker_package}" ]; then
+        note "使用本地Docker安装包"
+        tar --strip-components=1 -xvzf "${parent_path}/${arch}/${docker_package}" -C /usr/bin
+    else
+        note "从Docker官方下载安装包"
+        curl -fsSL "https://download.docker.com/linux/static/stable/${arch}/docker-${docker_version}.tgz" -o "${parent_path}/${arch}/docker-${docker_version}.tgz"
+        tar --strip-components=1 -xvzf "${parent_path}/${arch}/docker-${docker_version}.tgz" -C /usr/bin
+    fi
+    chmod -R u+x,g+x /usr/bin
+    
+    # 配置docker daemon
     mkdir -p /etc/docker
+    sed "s#DIR#${docker_rootdir}#g" "${parent_path}/daemon.json" > /etc/docker/daemon.json
     
-    # 设置docker的daemon配置文件
-    sed  "s#DIR#${docker_rootdir}#g" "${parent_path}/daemon.json" > /tmp/daemon.json
-    [ -f /etc/docker/daemon.json ] || cp /tmp/daemon.json /etc/docker/daemon.json
-    
-    # 启用并启动docker服务
+    # 启动docker服务
     systemctl daemon-reload
     systemctl enable --now docker
     
-    # 设置相关文件的权限
-    chmod -R u+x,g+x /usr/bin
-    
-    # 输出docker状态
+    # 验证安装
     docker version
 }
 
+# 安装docker（如果未安装）
 if ! command_exists dockerd; then
     install_docker
 fi
 
+# 安装docker-compose（如果未安装）
 if ! command_exists docker-compose; then
-    cp "${parent_path}/${arch}/docker-compose" "/usr/bin/docker-compose"
-    chmod a+x /usr/bin/docker-compose
+    if [[ -f "${parent_path}/${arch}/docker-compose" ]]; then
+        cp "${parent_path}/${arch}/docker-compose" "/usr/bin/docker-compose"
+        chmod a+x /usr/bin/docker-compose
+    else
+        echo "本地未找到 docker-compose，尝试从网络下载..."
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/bin/docker-compose
+        chmod a+x /usr/bin/docker-compose
+    fi
+else
+    echo "docker-compose 已安装，跳过安装步骤。"
 fi
