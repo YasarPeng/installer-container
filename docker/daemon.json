@@ -1,0 +1,17 @@
+{
+    "exec-opts": [
+        "native.cgroupdriver=systemd"
+    ],
+    "data-root": "DIR",
+    "default-address-pools": [
+        {
+            "base": "173.20.0.1/16",
+            "size": 24
+        }
+    ],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "200m",
+        "max-file": "2"
+    }
+}
