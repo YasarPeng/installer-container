@@ -9,4 +9,4 @@ net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 
-sysctl --system > /dev/null
+sysctl --system > /dev/null 2>&1
