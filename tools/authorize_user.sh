@@ -119,16 +119,16 @@ create_docker_group() {
 # 为用户授权Docker权限
 authorize_docker_user() {
     local username="$1"
-
+    
     # 检查用户是否存在
     if ! id "$username" >/dev/null 2>&1; then
         error "用户 $username 不存在"
         return 1
     fi
-
+    
     # 创建docker组
     create_docker_group
-
+    
     # 将用户添加到docker组
     if id -nG "$username" | grep -qw docker; then
         note "用户 $username 已在docker组中"
@@ -137,10 +137,10 @@ authorize_docker_user() {
         usermod -aG docker "$username"
         success "用户 $username 已添加到docker组"
     fi
-
+    
     # 设置权限
     setup_docker_permissions "$username"
-
+    
     # 设置sudo免密权限
     setup_sudo_nopasswd "$username"
 }
@@ -148,9 +148,9 @@ authorize_docker_user() {
 # 设置Docker相关权限
 setup_docker_permissions() {
     local username="$1"
-
+    
     note "设置Docker相关目录权限..."
-
+    
     # Docker相关目录权限
     local docker_dirs=(
         "/var/run/docker.sock"
@@ -159,14 +159,14 @@ setup_docker_permissions() {
         "/usr/bin/docker*"
         "/usr/local/bin/docker*"
     )
-
+    
     for dir_pattern in "${docker_dirs[@]}"; do
         if ls $dir_pattern >/dev/null 2>&1; then
             chown -R root:docker $dir_pattern 2>/dev/null || true
             chmod -R g+rw $dir_pattern 2>/dev/null || true
         fi
     done
-
+    
     # Containerd相关权限
     local containerd_dirs=(
         "/var/run/containerd"
@@ -176,25 +176,25 @@ setup_docker_permissions() {
         "/usr/local/bin/nerdctl*"
         "/usr/local/bin/buildkit*"
     )
-
+    
     for dir_pattern in "${containerd_dirs[@]}"; do
         if ls $dir_pattern >/dev/null 2>&1; then
             chown -R root:docker $dir_pattern 2>/dev/null || true
             chmod -R g+rw $dir_pattern 2>/dev/null || true
         fi
     done
-
+    
     success "Docker权限设置完成"
 }
 
 # 设置sudo免密权限
 setup_sudo_nopasswd() {
     local username="$1"
-
+    
     note "设置sudo免密权限..."
-
+    
     local sudo_file="/etc/sudoers.d/docker-users"
-
+    
     # 创建sudoers文件
     cat > "$sudo_file" << EOF
 # Docker用户免密权限配置
@@ -207,25 +207,25 @@ $username ALL=(ALL) NOPASSWD: /bin/systemctl status docker, /bin/systemctl statu
 $username ALL=(ALL) NOPASSWD: /bin/systemctl enable docker, /bin/systemctl disable docker
 $username ALL=(ALL) NOPASSWD: /bin/systemctl enable containerd, /bin/systemctl disable containerd
 EOF
-
+    
     # 设置文件权限
     chmod 440 "$sudo_file"
-
+    
     success "sudo免密权限设置完成"
 }
 
 # 撤销用户权限
 revoke_user_permissions() {
     local username="$1"
-
+    
     # 检查用户是否存在
     if ! id "$username" >/dev/null 2>&1; then
         error "用户 $username 不存在"
         return 1
     fi
-
+    
     note "撤销用户 $username 的Docker权限..."
-
+    
     # 从docker组中移除用户
     if id -nG "$username" | grep -qw docker; then
         gpasswd -d "$username" docker
@@ -233,7 +233,7 @@ revoke_user_permissions() {
     else
         note "用户 $username 不在docker组中"
     fi
-
+    
     # 删除sudo免密配置
     local sudo_file="/etc/sudoers.d/docker-users"
     if [ -f "$sudo_file" ]; then
@@ -249,7 +249,7 @@ revoke_user_permissions() {
 # 列出已授权用户
 list_authorized_users() {
     h2 "当前已授权Docker权限的用户"
-
+    
     if getent group docker >/dev/null 2>&1; then
         note "Docker组成员:"
         getent group docker | cut -d: -f4 | tr ',' '\n' | sed '/^$/d' | while read user; do
@@ -260,7 +260,7 @@ list_authorized_users() {
     else
         warn "docker组不存在"
     fi
-
+    
     echo
     note "具有sudo免密权限的用户:"
     local sudo_file="/etc/sudoers.d/docker-users"
@@ -278,7 +278,7 @@ list_authorized_users() {
 # 为所有用户授权
 authorize_all_users() {
     note "为所有系统用户授权Docker权限..."
-
+    
     # 获取所有普通用户 (UID >= 1000)
     local users=()
     while IFS=: read -r username _ uid _ _ _ _; do
@@ -286,44 +286,44 @@ authorize_all_users() {
             users+=("$username")
         fi
     done < /etc/passwd
-
+    
     if [ ${#users[@]} -eq 0 ]; then
         warn "未找到普通用户"
         return 1
     fi
-
+    
     note "找到 ${#users[@]} 个普通用户，正在授权..."
-
+    
     for user in "${users[@]}"; do
         note "授权用户: $user"
         authorize_docker_user "$user"
     done
-
+    
     success "所有用户授权完成"
 }
 
 # 验证用户权限
 verify_permissions() {
     local username="$1"
-
+    
     h2 "验证用户权限"
-
+    
     note "检查用户 $username 的权限..."
-
+    
     # 检查用户是否在docker组中
     if id -nG "$username" | grep -qw docker; then
         success "✓ 用户在docker组中"
     else
         warn "✗ 用户不在docker组中"
     fi
-
+    
     # 检查sudo配置
     if sudo -l -U "$username" 2>/dev/null | grep -q "docker\|containerd"; then
         success "✓ 用户具有sudo免密权限"
     else
         warn "✗ 用户无sudo免密权限"
     fi
-
+    
     # 尝试测试Docker命令 (如果Docker已安装)
     if command -v docker >/dev/null 2>&1; then
         note "测试Docker命令访问..."
@@ -340,55 +340,21 @@ create_user_env() {
     local username="$1"
     local home_dir
     home_dir=$(eval echo "~$username")
-
+    
     note "为用户 $username 创建环境配置..."
-
+    
     # 创建.bashrc.d目录
     mkdir -p "$home_dir/.bashrc.d"
-
+    
     # 创建Docker环境配置
-    cat > "$home_dir/.bashrc.d/docker-env.sh" << 'EOF'
-# Docker环境变量和别名
-export DOCKER_BUILDKIT=1
-export COMPOSE_DOCKER_CLI_BUILD=1
-
-# Docker别名
-alias dps='docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"'
-alias dimg='docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"'
-alias dvol='docker volume ls'
-alias dnet='docker network ls'
-alias drm='docker rm -f'
-alias drmi='docker rmi -f'
-
-# Containerd/Nerdctl别名
-if command -v nerdctl >/dev/null 2>&1; then
-    alias nps='nerdctl ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}"'
-    alias nimg='nerdctl images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"'
-    alias nvol='nerdctl volume ls'
-    alias nnet='nerdctl network ls'
-fi
-
-# 提示函数
-docker_info() {
-    if command -v docker >/dev/null 2>&1; then
-        echo "=== Docker信息 ==="
-        docker version --format '{{.Server.Version}}' 2>/dev/null && echo "版本: $(docker version --format '{{.Server.Version}}' 2>/dev/null)"
-        docker info 2>/dev/null | grep -E "Server Version|Storage Driver|Cgroup Driver" || echo "无法获取Docker信息"
-    else
-        echo "Docker未安装或不可访问"
-    fi
-}
-EOF
-
     # 设置文件权限
     chown -R "$username:$username" "$home_dir/.bashrc.d"
-
+    
     # 更新.bashrc
     if ! grep -q "docker-env.sh" "$home_dir/.bashrc" 2>/dev/null; then
-        echo 'if [ -f ~/.bashrc.d/docker-env.sh ]; then . ~/.bashrc.d/docker-env.sh; fi' >> "$home_dir/.bashrc"
         chown "$username:$username" "$home_dir/.bashrc"
     fi
-
+    
     success "用户环境配置完成"
 }
 
@@ -398,34 +364,34 @@ main() {
     local revoke=false
     local list=false
     local all=false
-
+    
     # 解析命令行参数
     while [[ $# -gt 0 ]]; do
         case $1 in
             -u|--user)
                 username="$2"
                 shift 2
-                ;;
+            ;;
             -g|--group)
                 GROUP="$2"
                 shift 2
-                ;;
+            ;;
             -r|--revoke)
                 revoke=true
                 shift
-                ;;
+            ;;
             -l|--list)
                 list=true
                 shift
-                ;;
+            ;;
             -a|--all)
                 all=true
                 shift
-                ;;
+            ;;
             -h|--help)
                 show_help
                 exit 0
-                ;;
+            ;;
             *)
                 if [ -z "$username" ]; then
                     username="$1"
@@ -435,10 +401,10 @@ main() {
                     exit 1
                 fi
                 shift
-                ;;
+            ;;
         esac
     done
-
+    
     # 如果没有指定用户，使用当前用户
     if [ -z "$username" ] && [ "$list" = false ] && [ "$all" = false ]; then
         username="$(logname 2>/dev/null || echo "$SUDO_USER")"
@@ -447,28 +413,28 @@ main() {
             exit 1
         fi
     fi
-
+    
     # 检查root权限 (除了列出操作)
     if [ "$list" = false ]; then
         check_root
     fi
-
+    
     # 检测系统
     detect_system
-
+    
     # 执行相应操作
     if [ "$list" = true ]; then
         list_authorized_users
-    elif [ "$all" = true ]; then
+        elif [ "$all" = true ]; then
         authorize_all_users
-    elif [ "$revoke" = true ]; then
+        elif [ "$revoke" = true ]; then
         revoke_user_permissions "$username"
         verify_permissions "$username"
     else
         authorize_docker_user "$username"
         create_user_env "$username"
         verify_permissions "$username"
-
+        
         echo
         note "授权完成！用户 $username 现在可以："
         note "  - 无需sudo使用docker命令"

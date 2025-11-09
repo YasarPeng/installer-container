@@ -16,15 +16,15 @@ note "检测到系统架构: $arch ($ARCH)"
 case $ARCH in
     amd64|arm64|armv7l|386)
         note "架构 $ARCH 支持安装containerd"
-        ;;
+    ;;
     *)
         error "containerd/nerdctl 不支持当前架构: $ARCH"
         exit 1
-        ;;
+    ;;
 esac
 
 # 设置默认参数
-containerd_version="${2:-1.7.6}"
+containerd_version="${2:-2.0.4}"
 containerd_rootdir="${1:-/data/laiye/containerd}"
 containerd_package="nerdctl-full-${containerd_version}-linux-${ARCH}.tar.gz"
 containerd_url="https://github.com/containerd/nerdctl/releases/download/v${containerd_version}/${containerd_package}"
@@ -46,36 +46,7 @@ fi
 # 下载 nerdctl 包（如果本地不存在）
 if [[ ! -f "${parent_path}/${arch}/${containerd_package}" ]]; then
     mkdir -p "${parent_path}/${arch}"
-    note "本地未找到 ${containerd_package}，正在从网络下载..."
-
-    # 尝试多个下载源
-    local download_urls=(
-        "https://github.com/containerd/nerdctl/releases/download/v${containerd_version}/${containerd_package}"
-        "https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/${containerd_package}"
-    )
-
-    local download_success=false
-
-    for url in "${download_urls[@]}"; do
-        note "尝试从 ${url} 下载..."
-
-        if command -v wget &>/dev/null && wget -c -O "${parent_path}/${arch}/${containerd_package}" "$url"; then
-            download_success=true
-            break
-        elif command -v curl &>/dev/null && curl -L -o "${parent_path}/${arch}/${containerd_package}" "$url"; then
-            download_success=true
-            break
-        fi
-
-        warn "从 $url 下载失败，尝试下一个源..."
-    done
-
-    if [ "$download_success" = false ]; then
-        error "所有下载源都失败，请手动下载 ${containerd_package} 到 ${parent_path}/${arch}/"
-        exit 1
-    fi
-
-    success "下载完成：${parent_path}/${arch}/${containerd_package}"
+    error "本地未找到 ${containerd_package}, 请执行tools/download_package.sh下载"
 fi
 
 # 安装 containerd
@@ -114,3 +85,16 @@ else
     error "nerdctl安装失败或不可用"
     exit 1
 fi
+
+# 普通用户授权提示
+echo
+h2 "普通用户授权配置"
+note "如果需要为普通用户配置nerdctl权限，请用户手动执行以下命令："
+note "  containerd-rootless-setuptool.sh install"
+echo
+note "该命令将："
+note "  - 为当前用户配置rootless containerd环境"
+note "  - 设置必要的环境变量"
+note "  - 配置用户命名空间和cgroup"
+echo
+note "执行后需要重新登录或重启shell使配置生效"

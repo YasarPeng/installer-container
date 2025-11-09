@@ -76,8 +76,6 @@ downloader() {
             # 根据 Docker 版本选择兼容的 Docker Compose 版本
             local compose_version=$(get_compose_version "$version")
             url_compose="https://github.com/docker/compose/releases/download/v${compose_version}/docker-compose-linux-${arch}"
-            # url="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/docker-${version}.tgz"
-            # url_compose="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/docker-compose"
             wget -T 15 -c ${url} -P ${grandparent_path}/docker/${arch}/
             wget -T 15 -c ${url_rootless_extras} -P ${grandparent_path}/docker/${arch}/
             wget -T 15 -c ${url_compose} -P ${grandparent_path}/docker/${arch}/
@@ -86,8 +84,7 @@ downloader() {
             success "下载完成，存储路径：${grandparent_path}/docker/${arch}/"
         ;;
         "containerd")
-            #url="https://github.com/containerd/nerdctl/releases/download/v1.7.6/nerdctl-full-${version}-linux-${ARCH}.tar.gz"
-            url="https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/nerdctl-full-${version}-linux-${ARCH}.tar.gz"
+            url="https://github.com/containerd/nerdctl/releases/download/v${version}/nerdctl-full-${version}-linux-${ARCH}.tar.gz"
             wget -T 15 -c ${url} -P ${grandparent_path}/containerd/${arch}/
             success "下载完成，存储路径：${grandparent_path}/containerd/${arch}/"
         ;;
@@ -103,12 +100,10 @@ DOCKER_VERSIONS=(
 )
 
 CONTAINERD_VERSIONS=(
-    "1.7.6"
     "1.7.7"
-    "1.7.18"
-    "1.7.20"
     "2.0.4"
-    "2.0.8"
+    "2.1.4"
+    "2.2.0"
 )
 
 # 根据 Docker 版本选择兼容的 Docker Compose 版本
