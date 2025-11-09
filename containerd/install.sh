@@ -8,18 +8,19 @@ grandparent_path="$(cd "$(dirname "${parent_path}")" && pwd)"
 source "$grandparent_path/tools/common.sh"
 
 # 检查系统架构
+detect_system
 arch="$(uname -m)"
-case $arch in
-    x86_64)
-        ARCH="amd64"
-    ;;
-    aarch64)
-        ARCH="arm64"
-    ;;
+note "检测到系统架构: $arch ($ARCH)"
+
+# 验证架构是否被containerd/nerdctl支持
+case $ARCH in
+    amd64|arm64|armv7l|386)
+        note "架构 $ARCH 支持安装containerd"
+        ;;
     *)
-        error "The current hardware platform or virtual platform is not supported."
+        error "containerd/nerdctl 不支持当前架构: $ARCH"
         exit 1
-    ;;
+        ;;
 esac
 
 # 设置默认参数
@@ -46,17 +47,35 @@ fi
 if [[ ! -f "${parent_path}/${arch}/${containerd_package}" ]]; then
     mkdir -p "${parent_path}/${arch}"
     note "本地未找到 ${containerd_package}，正在从网络下载..."
-    
-    if command -v wget &>/dev/null; then
-        wget -c -O "${parent_path}/${arch}/${containerd_package}" "${containerd_url}"
-        elif command -v curl &>/dev/null; then
-        curl -L -o "${parent_path}/${arch}/${containerd_package}" "${containerd_url}"
-    else
-        error "未找到 wget 或 curl，无法下载 nerdctl。请手动下载到 ${parent_path}/${arch}/"
+
+    # 尝试多个下载源
+    local download_urls=(
+        "https://github.com/containerd/nerdctl/releases/download/v${containerd_version}/${containerd_package}"
+        "https://private-deploy.oss-cn-beijing.aliyuncs.com/pengyongshi/images/${arch}/${containerd_package}"
+    )
+
+    local download_success=false
+
+    for url in "${download_urls[@]}"; do
+        note "尝试从 ${url} 下载..."
+
+        if command -v wget &>/dev/null && wget -c -O "${parent_path}/${arch}/${containerd_package}" "$url"; then
+            download_success=true
+            break
+        elif command -v curl &>/dev/null && curl -L -o "${parent_path}/${arch}/${containerd_package}" "$url"; then
+            download_success=true
+            break
+        fi
+
+        warn "从 $url 下载失败，尝试下一个源..."
+    done
+
+    if [ "$download_success" = false ]; then
+        error "所有下载源都失败，请手动下载 ${containerd_package} 到 ${parent_path}/${arch}/"
         exit 1
     fi
-    
-    note "下载完成：${parent_path}/${arch}/${containerd_package}"
+
+    success "下载完成：${parent_path}/${arch}/${containerd_package}"
 fi
 
 # 安装 containerd
@@ -76,11 +95,22 @@ sed -i \
 /etc/containerd/config.toml
 
 # 启动服务
-note "启动 containerd 服务..."
-systemctl daemon-reload
-systemctl enable --now containerd
-systemctl enable --now buildkit.service
+note "启动 containerd 相关服务..."
+start_service "containerd"
+
+# 尝试启动buildkit服务（如果存在）
+if systemctl list-unit-files | grep -q "buildkit.service"; then
+    start_service "buildkit"
+else
+    warn "buildkit服务未找到，跳过启动"
+fi
 
 # 验证安装
-note "containerd 安装完成，版本信息如下："
-nerdctl version
+if command -v nerdctl >/dev/null 2>&1; then
+    success "containerd 安装完成，版本信息如下："
+    nerdctl version
+    nerdctl info
+else
+    error "nerdctl安装失败或不可用"
+    exit 1
+fi

@@ -7,6 +7,22 @@ parent_path="$(cd "$(dirname "$0")" && pwd)"
 source "$parent_path/tools/common.sh"
 
 initialize() {
+    # 系统检测和初始化
+    h1 "系统兼容性检查"
+    detect_system
+    note "检测到的系统信息:"
+    note "  架构: $ARCH"
+    note "  发行版: $DISTRO $VERSION"
+    note "  包管理器: $PKG_MANAGER"
+    
+    # 检查必要工具
+    # check_dependencies
+    
+    # 测试网络连接
+    # test_network || warn "网络连接可能存在问题，继续安装但可能需要手动下载"
+    
+    # 执行系统初始化脚本
+    h1 "系统初始化配置"
     bash "$parent_path/tools/config_limits.sh"
     bash "$parent_path/tools/disable_swap.sh"
     bash "$parent_path/tools/enable_br_netfilter.sh"
@@ -29,6 +45,68 @@ install_runtime() {
             bash "$parent_path/containerd/install.sh" "$rootdir" "$version"
         ;;
     esac
+    
+    # 安装完成后询问是否授权普通用户
+    note "安装完成，如果需要授权普通用户请执行脚本: $parent_path/tools/authorize_user.sh"
+    # post_install_authorization "$choice"
+}
+
+# 安装后授权
+post_install_authorization() {
+    local runtime="$1"
+    
+    echo
+    h2 "用户权限配置"
+    
+    PS3=$'\033[32m请选择用户权限配置方式: \033[0m'
+    local auth_options=(
+        "授权当前用户"
+        "授权指定用户"
+        "授权所有普通用户"
+        "跳过用户授权"
+        "列出已授权用户"
+    )
+    
+    select auth_choice in "${auth_options[@]}"; do
+        case "$auth_choice" in
+            "授权当前用户")
+                local current_user="${SUDO_USER:-$(logname 2>/dev/null)}"
+                if [ -n "$current_user" ]; then
+                    note "为当前用户 $current_user 授权..."
+                    sudo bash "$parent_path/tools/authorize_user.sh" -u "$current_user"
+                else
+                    error "无法确定当前用户"
+                fi
+                break
+            ;;
+            "授权指定用户")
+                read -r -p "请输入要授权的用户名: " target_user
+                if [ -n "$target_user" ]; then
+                    sudo bash "$parent_path/tools/authorize_user.sh" -u "$target_user"
+                else
+                    error "用户名不能为空"
+                fi
+                break
+            ;;
+            "授权所有普通用户")
+                sudo bash "$parent_path/tools/authorize_user.sh" -a
+                break
+            ;;
+            "跳过用户授权")
+                note "跳过用户授权，您可以稍后手动运行:"
+                note "  sudo bash tools/authorize_user.sh"
+                break
+            ;;
+            "列出已授权用户")
+                sudo bash "$parent_path/tools/authorize_user.sh" -l
+                echo
+                note "请重新选择操作:"
+            ;;
+            *)
+                echo "无效的选项，请重新选择！"
+            ;;
+        esac
+    done
 }
 
 # 定义容器运行时选项
@@ -97,7 +175,7 @@ choice_rootdir() {
         select opt in "${options[@]}"; do
             case "$opt" in
                 "继续")
-                    choice_version "$service"
+                    # choice_version "$service" 是否开启版本选择
                     install_runtime "$service" "$rootdir" "$version"
                     return
                 ;;

@@ -86,7 +86,7 @@ choice_rootdir() {
         do
             case "$opt" in
                 "继续")
-                    choice_version "$service"
+                    # choice_version "$service"
                     uninstall_runtime "$service" "$rootdir" "$version"
                     return
                 ;;
